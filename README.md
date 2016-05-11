@@ -5,11 +5,11 @@
       MM    `7    MMN.    M  P'   MM   `7 ,MI    "Y     ,MI    "Y .dP'    `YM. MM       M    MM    `7   MM    `7   MM          MM    `7  
       MM   d      M YMb   M       MM      `MMb.         `MMb.     dM'      `MM MM       M    MM   d     MM   d     MM          MM   d    
       MMmmMM      M  `MN. M       MM        `YMMNq.       `YMMNq. MM        MM MM       M    MM""MM     MM""MM     MM          MMmmMM    
-      MM   Y  ,   M   `MM.M       MM      .     `MM     .     `MM MM.      ,MP MM       M    MM   Y     MM   Y     MM      ,   MM   Y  , 
-      MM     ,M   M     YMM       MM      Mb     dM     Mb     dM `Mb.    ,dP' YM.     ,M    MM         MM         MM     ,M   MM     ,M 
-    .JMMmmmmMMM .JML.    YM     .JMML.    P"Ybmmd"      P"Ybmmd"    `"bmmd"'    `bmmmmd"'  .JMML.     .JMML.     .JMMmmmmMMM .JMMmmmmMMM 
-                                                                                                                  
-                   
+      MM   Y  ,   M   `MM.M       MM      .     `MM     .     `MM MM.      ,MP MM       M    MM   Y     MM   Y     MM      ,   MM   Y  ,
+      MM     ,M   M     YMM       MM      Mb     dM     Mb     dM `Mb.    ,dP' YM.     ,M    MM         MM         MM     ,M   MM     ,M
+    .JMMmmmmMMM .JML.    YM     .JMML.    P"Ybmmd"      P"Ybmmd"    `"bmmd"'    `bmmmmd"'  .JMML.     .JMML.     .JMMmmmmMMM .JMMmmmmMMM
+
+
                                                    ```.......```                                                    
                                            `--///+++:.-..://++//+:::::///////-````                                  
                                        `:/sso+/++yyoso+:/+/:/o++ssoooso/ss+oso+o+/:-.`````                          
@@ -22,11 +22,11 @@
                      ---..+s-`.````````````````````-:/://+/os+//----.``::+++//-.``````````````````````.`:+``..`     
                     .:.``-y/````````````````````````-----::/:-----.```````````````````````````````````.`.y:``.::`   
                    --`.`.+-````````````````````````````````````````````````````````````````.````````.```-ss.````::  
-                  --..`-+s+---..--.````````````````````````````````````````````````````````````````....:o:``:````-- 
-                 .-`-/+syys+/-.-:---.`````.....````````````````````````````````````````````.-...----:-::````.+://.: 
-                 .-`-o::ssysooysoo:``.+:---.----...-----````````````````````````````.-///++/.```````.`.``.``.:syss/ 
-                  .-`-o...-os//soo.``-o.://.-````````...so+-:---:.`````..-:::/+/:/+o+:.```.os`-:../s++o+++/+so/+ys- 
-                   `--`````:..-o-..-+:-+y+so+++sss++++/..o+:y+...-///oo.::+/soossys+///:.``/+ossoyyossysooo/.:+o+:` 
+                  --..`-+s+---..--.````````````````````````````````````````````````````````````````....:o:``:````--
+                 .-`-/+syys+/-.-:---.`````.....````````````````````````````````````````````.-...----:-::````.+://.:
+                 .-`-o::ssysooysoo:``.+:---.----...-----````````````````````````````.-///++/.```````.`.``.``.:syss/
+                  .-`-o...-os//soo.``-o.://.-````````...so+-:---:.`````..-:::/+/:/+o+:.```.os`-:../s++o+++/+so/+ys-
+                   `--`````:..-o-..-+:-+y+so+++sss++++/..o+:y+...-///oo.::+/soossys+///:.``/+ossoyyossysooo/.:+o+:`
                       .:::----```-+o.-osysyo+osooooo+++:`o/oso/+--.`-os`````-./sso/-.``````/yyyyso/://-://+oo/-.`   
                          `.:y/::.```./+o+yso++/ssosoooo//osyoso+o+/--`.````.``.``...`````..s+/--.::/+o++s+-.`       
                             ss+....--.```:///+oo+++o++o++/:.::/s+oso-.:--:/..```````````+y+//+oso++ysys/-.          
@@ -46,10 +46,10 @@
                                    `--:///+/-````-//:-````..--```````//-.```-/+o/````./+/:.``-:/:-.                 
                                           ``.---::/+oo+++/::--:+++++//:----:/+/:.....-----....`                     
                                                     ``.---........-:------............
-                                                      
-                                   
+
+
                                                    A cloud of clouds; collective noun                             
-                                                                                                    
+
 ```
 
 ## ENTS Soufflé
@@ -61,6 +61,4 @@ Cloud controlled clouds. Multiple physical clouds may be controlled on a network
 ## Project Structure
 
 * `/Cloud` - The code for the cloud, a listening device on the network
-* `/HardwareController` - An example controller with a simple rotary encoder, an instructing device on the network
-* `/WebController` - An example controller serving a web-accessible interface, an instructing device on the network
-
+* `/HardwareController` - An example controller with a simple rotary encoder and web server, an instructing device on the network
