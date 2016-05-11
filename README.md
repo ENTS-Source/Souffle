@@ -56,7 +56,7 @@
 
 _A cloud of clouds; collective noun_
 
-Cloud controlled clouds. Multiple physical clouds may be controlled on a network using a controller. Clouds and controllers in this repository use NodeMCUs to communicate and function.
+Cloud controlled clouds. Multiple physical clouds may be controlled on a network using a controller. Clouds and controllers in this repository use [NodeMCU](https://nodemcu.readthedocs.io/en/dev/)s to communicate and function.
 
 ## Project Structure
 
