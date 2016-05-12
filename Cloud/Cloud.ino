@@ -68,7 +68,7 @@ IPAddress MULTICAST_IP(225, 225, 225, 225);
 #define LED_PIN D4
 #define PIXEL_PIN D3
 #define NUM_PIXELS 170 // 170 maximum
-#define MAX_MODES 6
+#define MAX_MODES 7
 
 // State variables
 bool startedOk = false;
@@ -96,6 +96,7 @@ struct {
 
 // define prototypes
 void pingColorMode();
+void pingOffMode();
 
 void setup() {
   // debugging
@@ -167,7 +168,7 @@ void loop() {
 
     if(packetBuffer[0] == PROTOCOL_CHANGE_MODE){
       int newMode = (int)packetBuffer[1];
-      if(newMode >= 0 && newMode <= MAX_MODES && newMode != currentMode){
+      if(newMode >= 0 && newMode < MAX_MODES && newMode != currentMode){
         currentMode = newMode;
         justChangedMode = true;
       }
@@ -201,6 +202,7 @@ void loop() {
     //case 3: pingSunsetMode(); break;
     //case 4: pingRainbowMode(); break;
     //case 5: pingDiscoMode(); break;
+    case 6: pingOffMode(); break;
   }
 
   justChangedMode = false;
@@ -217,3 +219,13 @@ void pingColorMode(){
     colorState.updated = false; // so we don't constantly update the strip
   }
 }
+
+void pingOffMode(){
+  if(justChangedMode){
+    for(int i = 0; i < strip.numPixels(); i++){
+      strip.setPixelColor(i, strip.Color(0, 0, 0));
+    }
+    strip.show();
+  }
+}
+

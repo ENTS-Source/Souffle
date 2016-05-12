@@ -77,7 +77,7 @@ IPAddress MULTICAST_IP(225, 225, 225, 225);
 #define ENC_SW_PIN D3
 #define ENC_SW_OPEN 1 // inverted due to pullup
 #define ENC_SW_CLOSED 0
-#define MAX_MODES 6
+#define MAX_MODES 7
 
 // State variables
 int red;
@@ -87,6 +87,7 @@ int currentMode = -1; // intentionally invalid: wait for mode before starting co
 long lastEncPosition = 0;
 double deg = 0;
 int lastSwState = ENC_SW_OPEN;
+bool justUpdatedMode = true;
 bool justChangedMode = true;
 bool startedOk = false;
 
@@ -103,6 +104,7 @@ byte packetBuffer[512];
 
 // define prototypes
 void checkColorMode();
+void writeLCD(String line1, String line2);
 void updateColor();
 void hsv2rgb(float hueDegrees, float saturation, float value, int rgb[]);
  
@@ -112,6 +114,12 @@ void setup() {
 
   // general IO setup
   pinMode(LED_PIN, OUTPUT);
+
+  // setup lcd
+  Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
+  lcd.init();
+  lcd.backlight();
+  writeLCD("ENTS Souffle", "Loading...");
   
   // connect to wifi
   DEBUG_SERIAL.println("Connecting to wifi...");
@@ -136,18 +144,8 @@ void setup() {
 
   // join multicast
   udp.beginMulticast(WiFi.localIP(), MULTICAST_IP, MULTICAST_PORT);
-
-  // setup lcd
-  Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("ENTS Mood Cloud");
-  lcd.setCursor(0, 1);
-  lcd.print("Turn to adjust");
   
   digitalWrite(LED_PIN, HIGH);
-  randomSeed(23242434);
   pinMode(ENC_SW_PIN, INPUT);
   startedOk = true;
 }
@@ -200,18 +198,30 @@ void loop() {
 
     if(packetBuffer[0] = PROTOCOL_CHANGE_MODE){
       int newMode = (int)packetBuffer[1];
-      if(newMode >= 0 && newMode <= MAX_MODES){
+      if(newMode >= 0 && newMode < MAX_MODES){
+        justChangedMode = currentMode != newMode;
         currentMode = newMode;
-        justChangedMode = true;
+        justUpdatedMode = true;
       }
     }
   }
 
   switch(currentMode){
-    case 0: checkColorMode(); break;
+    case 0: 
+      checkColorMode(); 
+      if(justChangedMode){
+        writeLCD("Mode: RGB Color", "Turn to adjust");
+      }
+      break;
     // TODO: Other modes
+    case 6: 
+      if(justChangedMode){
+        writeLCD("Mode: Off", "");
+      }
+      break;
   }
 
+  justUpdatedMode = false;
   justChangedMode = false;
 }
 
@@ -222,15 +232,23 @@ void checkColorMode(){
 
   updateColor();
 
-  if(r1 != red || g1 != green || b1 != blue || justChangedMode){
+  if(r1 != red || g1 != green || b1 != blue || justUpdatedMode){
     DEBUG_SERIAL.println("MODE: Color. R = " + String(red) + ", G = " + String(green) + ", B = " + String(blue));
     udp.beginPacketMulticast(MULTICAST_IP, MULTICAST_PORT, WiFi.localIP(), 1200);
-    udp.write(PROTOCOL_PARAMS_COLOR);
+    udp.write((byte)PROTOCOL_PARAMS_COLOR);
     udp.write((byte)red);
     udp.write((byte)green);
     udp.write((byte)blue);
     udp.endPacket();
   }
+}
+
+void writeLCD(String line1, String line2){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(line1);
+  lcd.setCursor(0, 1);
+  lcd.print(line2);
 }
 
 void updateColor() {
