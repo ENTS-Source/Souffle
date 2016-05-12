@@ -51,13 +51,227 @@
                                                    A cloud of clouds; collective noun                             
                                                                                                     
  */
- 
- void setup() {
-  // put your setup code here, to run once:
 
+#include <Encoder.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+
+// Configuration constants
+#define WIFI_SSID "ENTS"
+#define WIFI_PSK "hacktheplanet"
+IPAddress MULTICAST_IP(225, 225, 225, 225);
+#define MULTICAST_PORT 2525
+#define WIFI_WAIT_MAX 30000 // 30 seconds
+#define SATURATION 1.0 // 0.0 - 1.0
+#define VALUE 1.0 // 0.0 - 1.0
+
+// General constants
+#define DEBUG_SERIAL Serial
+#define LED_PIN D4
+#define LCD_SDA_PIN D1
+#define LCD_SCL_PIN D2
+#define ENC_CLK_PIN D5
+#define ENC_DT_PIN D6
+#define ENC_SW_PIN D3
+#define ENC_SW_OPEN 1 // inverted due to pullup
+#define ENC_SW_CLOSED 0
+#define MAX_MODES 6
+
+// State variables
+int red;
+int green;
+int blue;
+int currentMode = -1; // intentionally invalid: wait for mode before starting code
+long lastEncPosition = 0;
+double deg = 0;
+int lastSwState = ENC_SW_OPEN;
+bool justChangedMode = true;
+bool startedOk = false;
+
+// Protocol flags
+#define PROTOCOL_CHANGE_MODE 0x01
+#define PROTOCOL_INCREMENT_MODE 0x02
+#define PROTOCOL_PARAMS_COLOR 0xA0
+
+// Operational variables
+Encoder enc(ENC_CLK_PIN, ENC_DT_PIN);
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+WiFiUDP udp;
+byte packetBuffer[512];
+
+// define prototypes
+void checkColorMode();
+void updateColor();
+void hsv2rgb(float hueDegrees, float saturation, float value, int rgb[]);
+ 
+void setup() {
+  // debugging
+  DEBUG_SERIAL.begin(9600);
+
+  // general IO setup
+  pinMode(LED_PIN, OUTPUT);
+  
+  // connect to wifi
+  DEBUG_SERIAL.println("Connecting to wifi...");
+  WiFi.begin(WIFI_SSID, WIFI_PSK);
+
+  long wifiStart = millis();
+  while(WiFi.status() != WL_CONNECTED){
+    DEBUG_SERIAL.println("Waiting for connection to wifi...");
+    digitalWrite(LED_PIN, LOW);
+    delay(500);
+    digitalWrite(LED_PIN, HIGH);
+    delay(500);
+    if(millis() - wifiStart > WIFI_WAIT_MAX){
+      DEBUG_SERIAL.println("Failed to connect to wifi, cancelling startup");
+      startedOk = false;
+      return;
+    }
+  }
+  DEBUG_SERIAL.println("Connected to wifi");
+  DEBUG_SERIAL.print("IP: ");
+  DEBUG_SERIAL.println(WiFi.localIP());
+
+  // join multicast
+  udp.beginMulticast(WiFi.localIP(), MULTICAST_IP, MULTICAST_PORT);
+
+  // setup lcd
+  Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("ENTS Mood Cloud");
+  lcd.setCursor(0, 1);
+  lcd.print("Turn to adjust");
+  
+  digitalWrite(LED_PIN, HIGH);
+  randomSeed(23242434);
+  pinMode(ENC_SW_PIN, INPUT);
+  startedOk = true;
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  // check encoder
+  long newPosition = enc.read();
+  if(newPosition != lastEncPosition){
+    // Update degrees by number of rotations
+    // Approx 80 values per revolution, so ~3 revolutions for 360 degrees
+    double diff = newPosition - lastEncPosition;
+    deg += diff * 1.0;
+    lastEncPosition = newPosition;
 
+    // clamp degree range
+    if(deg > 360){
+      deg = 0;
+    }else if(deg < 0){
+      deg = 360;
+    }
+  }
+
+  // check for mode change
+  int swState = digitalRead(ENC_SW_PIN);
+  if(swState != lastSwState){
+    delay(10); // debounce
+    swState = digitalRead(ENC_SW_PIN);
+    lastSwState = swState;
+
+    if(swState == ENC_SW_OPEN){
+      udp.beginPacketMulticast(MULTICAST_IP, MULTICAST_PORT, WiFi.localIP(), 1200);
+      udp.write(PROTOCOL_INCREMENT_MODE);
+      udp.endPacket();
+    }
+  }
+
+  // read udp
+  int packetSize = udp.parsePacket();
+  if(packetSize){
+    DEBUG_SERIAL.println("Received packet...");
+    DEBUG_SERIAL.println("  Length: " + String(packetSize));
+    DEBUG_SERIAL.print("  From: ");
+    DEBUG_SERIAL.println(udp.remoteIP());
+    DEBUG_SERIAL.println("  Port: " + String(udp.remotePort()));
+
+    int len = udp.read(packetBuffer, 255);
+    if(len > 0) {
+      packetBuffer[len] = 0;
+    }
+
+    if(packetBuffer[0] = PROTOCOL_CHANGE_MODE){
+      int newMode = (int)packetBuffer[1];
+      if(newMode >= 0 && newMode <= MAX_MODES){
+        currentMode = newMode;
+        justChangedMode = true;
+      }
+    }
+  }
+
+  switch(currentMode){
+    case 0: checkColorMode(); break;
+    // TODO: Other modes
+  }
+
+  justChangedMode = false;
+}
+
+void checkColorMode(){
+  int r1 = red;
+  int g1 = green;
+  int b1 = blue;
+
+  updateColor();
+
+  if(r1 != red || g1 != green || b1 != blue || justChangedMode){
+    DEBUG_SERIAL.println("MODE: Color. R = " + String(red) + ", G = " + String(green) + ", B = " + String(blue));
+    udp.beginPacketMulticast(MULTICAST_IP, MULTICAST_PORT, WiFi.localIP(), 1200);
+    udp.write(PROTOCOL_PARAMS_COLOR);
+    udp.write((byte)red);
+    udp.write((byte)green);
+    udp.write((byte)blue);
+    udp.endPacket();
+  }
+}
+
+void updateColor() {
+  int rgb[3];
+  hsv2rgb(deg, SATURATION, VALUE, rgb);
+  
+  red = rgb[0];
+  blue = rgb[1];
+  green = rgb[2];
+}
+
+// hueDegrees: 0 - 360
+// saturation: 0 - 1
+// value: 0 - 1
+void hsv2rgb(float hueDegrees, float saturation, float value, int rgb[]) {
+  hueDegrees = constrain(hueDegrees, 0.0, 360.0) / 360; // convert to 0 - 1 from 0 - 360
+  saturation = constrain(saturation, 0.0, 1.0);
+  value = constrain(value, 0.0, 1.0);
+
+  // Conversion adapted from https://github.com/ratkins/RGBConverter/blob/7413c6dce023943f8c89df343b3c027bbf29a86c/RGBConverter.cpp#L131
+
+  int i = int(hueDegrees * 6);
+  double f = hueDegrees * 6 - i;
+  double p = value * (1 - saturation);
+  double q = value * (1 - f * saturation);
+  double t = value * (1 - (1 - f) * saturation);
+
+  double r;
+  double g;
+  double b;
+
+  switch(i % 6){
+  case 0: r = value; g = t; b = p; break;
+  case 1: r = q; g = value; b = p; break;
+  case 2: r = p; g = value; b = t; break;
+  case 3: r = p; g = q; b = value; break;
+  case 4: r = t; g = p; b = value; break;
+  case 5: r = value; g = p; b = q; break;
+  }
+
+  rgb[0] = r * 255;
+  rgb[1] = g * 255;
+  rgb[2] = b * 255;
 }

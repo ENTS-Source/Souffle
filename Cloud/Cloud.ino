@@ -52,12 +52,168 @@
                                                                                                     
  */
 
-void setup() {
-  // put your setup code here, to run once:
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+#include <Adafruit_NeoPixel.h>
 
+// Configuration constants
+#define WIFI_SSID "ENTS"
+#define WIFI_PSK "hacktheplanet"
+IPAddress MULTICAST_IP(225, 225, 225, 225);
+#define MULTICAST_PORT 2525
+#define WIFI_WAIT_MAX 30000 // 30 seconds
+
+// General constants
+#define DEBUG_SERIAL Serial
+#define LED_PIN D4
+#define PIXEL_PIN D3
+#define NUM_PIXELS 170 // 170 maximum
+#define MAX_MODES 6
+
+// State variables
+bool startedOk = false;
+int currentMode = 0;
+bool justChangedMode = true;
+long lastModeBroadcast = 0;
+
+// Operational variables
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
+byte packetBuffer[512];
+WiFiUDP udp;
+
+// Protocol flags
+#define PROTOCOL_CHANGE_MODE 0x01
+#define PROTOCOL_INCREMENT_MODE 0x02
+#define PROTOCOL_PARAMS_COLOR 0xA0
+
+// Structs for states
+struct {
+  int red;
+  int green;
+  int blue;
+  bool updated;
+} colorState;
+
+// define prototypes
+void pingColorMode();
+
+void setup() {
+  // debugging
+  DEBUG_SERIAL.begin(9600);
+
+  // general IO setup
+  pinMode(LED_PIN, OUTPUT);
+  
+  // connect to wifi
+  DEBUG_SERIAL.println("Connecting to wifi...");
+  WiFi.begin(WIFI_SSID, WIFI_PSK);
+
+  long wifiStart = millis();
+  while(WiFi.status() != WL_CONNECTED){
+    DEBUG_SERIAL.println("Waiting for connection to wifi...");
+    digitalWrite(LED_PIN, LOW);
+    delay(500);
+    digitalWrite(LED_PIN, HIGH);
+    delay(500);
+    if(millis() - wifiStart > WIFI_WAIT_MAX){
+      DEBUG_SERIAL.println("Failed to connect to wifi, cancelling startup");
+      startedOk = false;
+      return;
+    }
+  }
+  DEBUG_SERIAL.println("Connected to wifi");
+  DEBUG_SERIAL.print("IP: ");
+  DEBUG_SERIAL.println(WiFi.localIP());
+
+  // join multicast
+  udp.beginMulticast(WiFi.localIP(), MULTICAST_IP, MULTICAST_PORT);
+
+  // setup pixel strip
+  strip.begin();
+  for(int i = 0; i < strip.numPixels(); i++){
+    strip.setPixelColor(i, strip.Color(0, 0, 0));
+  }
+  strip.show();
+
+  digitalWrite(LED_PIN, HIGH);
+  randomSeed(23242434);
+  startedOk = true;
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  // Warning loop
+  if(!startedOk){
+    while(true){
+      digitalWrite(LED_PIN, LOW);
+      delay(50);
+      digitalWrite(LED_PIN, HIGH);
+      delay(50);
+    }
+  }
 
+  // check for updates from network
+  int packetSize = udp.parsePacket();
+  if(packetSize) {
+    DEBUG_SERIAL.println("Received packet...");
+    DEBUG_SERIAL.println("  Length: " + String(packetSize));
+    DEBUG_SERIAL.print("  From: ");
+    DEBUG_SERIAL.println(udp.remoteIP());
+    DEBUG_SERIAL.println("  Port: " + String(udp.remotePort()));
+
+    int len = udp.read(packetBuffer, 255);
+    if(len > 0) {
+      packetBuffer[len] = 0;
+    }
+
+    if(packetBuffer[0] == PROTOCOL_CHANGE_MODE){
+      int newMode = (int)packetBuffer[1];
+      if(newMode >= 0 && newMode <= MAX_MODES && newMode != currentMode){
+        currentMode = newMode;
+        justChangedMode = true;
+      }
+    }else if(packetBuffer[0] == PROTOCOL_INCREMENT_MODE){
+      currentMode++;
+      if(currentMode > MAX_MODES){
+        currentMode = 0;
+      }
+      justChangedMode = true;
+    }else if(packetBuffer[0] == PROTOCOL_PARAMS_COLOR){
+      colorState.red = (int)packetBuffer[1];
+      colorState.green = (int)packetBuffer[2];
+      colorState.blue = (int)packetBuffer[3];
+      colorState.updated = true;
+    } // TODO: Other modes
+  }
+
+  if(millis() - lastModeBroadcast >= 1000){
+    udp.beginPacketMulticast(MULTICAST_IP, MULTICAST_PORT, WiFi.localIP(), 1200);
+    udp.write(PROTOCOL_CHANGE_MODE);
+    udp.write((byte)currentMode);
+    udp.endPacket();
+    lastModeBroadcast = millis();
+  }
+
+  // do polling updates on modes
+  switch(currentMode) {
+    case 0: pingColorMode(); break;
+    //case 1: pingThunderMode(); break;
+    //case 2: pingSunriseMode(); break;
+    //case 3: pingSunsetMode(); break;
+    //case 4: pingRainbowMode(); break;
+    //case 5: pingDiscoMode(); break;
+  }
+
+  justChangedMode = false;
+}
+
+// CHECK FUNCTIONS
+// =======================================================
+void pingColorMode(){
+  if(colorState.updated || justChangedMode){
+    for(int i = 0; i < strip.numPixels(); i++){
+      strip.setPixelColor(i,  strip.Color(colorState.red, colorState.green, colorState.blue));
+    }
+    strip.show();
+    colorState.updated = false; // so we don't constantly update the strip
+  }
 }
