@@ -107,7 +107,11 @@ void checkColorMode();
 void writeLCD(String line1, String line2);
 void updateColor();
 void hsv2rgb(float hueDegrees, float saturation, float value, int rgb[]);
- 
+
+// because some functions are just plain broken
+#define min(a, b) (a < b ? a : b)
+#define max(a, b) (a > b ? a : b)
+
 void setup() {
   // debugging
   DEBUG_SERIAL.begin(9600);
@@ -203,6 +207,14 @@ void loop() {
         currentMode = newMode;
         justUpdatedMode = true;
       }
+    }else if(packetBuffer[0] = PROTOCOL_PARAMS_COLOR){
+      red = (int)packetBuffer[1];
+      green = (int)packetBuffer[2];
+      blue = (int)packetBuffer[3];
+
+      float hsv[3];
+      rgb2hsv(red, green, blue, hsv);
+      deg = hsv[0];
     }
   }
 
@@ -293,3 +305,43 @@ void hsv2rgb(float hueDegrees, float saturation, float value, int rgb[]) {
   rgb[1] = g * 255;
   rgb[2] = b * 255;
 }
+
+void rgb2hsv(int red, int green, int blue, float hsv[]) {
+  red = constrain(red, 0, 255);
+  green = constrain(green, 0, 255);
+  blue = constrain(blue, 0, 255);
+  
+  // Conversion adapted from https://github.com/ratkins/RGBConverter/blob/7413c6dce023943f8c89df343b3c027bbf29a86c/RGBConverter.cpp#L92
+  
+  double r1 = red / 255.0;
+  double g1 = green / 255.0;
+  double b1 = blue / 255.0;
+
+  double mx = max(r1, max(g1, b1));
+  double mn = min(r1, min(g1, b1));
+
+  double h = mx;
+  double s = mx;
+  double v = mx;
+
+  double d = mx - mn;
+  s = mx == 0 ? 0 : d / mx;
+
+  if (mx == mn) {
+    h = 0; // achromatic
+  } else {
+    if (mx == r1) {
+      h = (g1 - b1) / d + (g1 < b1 ? 6 : 0);
+    } else if (mx == g1) {
+      h = (b1 - r1) / d + 2;
+    } else if (mx == b1) {
+      h = (r1 - g1) / d + 4;
+    }
+    h = h / 6;
+  }
+
+  hsv[0] = h * 360; // degrees
+  hsv[1] = s; // 0 - 1
+  hsv[2] = v; // 0 - 1
+}
+
