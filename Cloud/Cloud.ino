@@ -67,8 +67,22 @@ IPAddress MULTICAST_IP(225, 225, 225, 225);
 #define DEBUG_SERIAL Serial
 #define LED_PIN D4
 #define PIXEL_PIN D3
-#define NUM_PIXELS 170 // 170 maximum
+#define NUM_PIXELS 17 // 170 maximum
 #define MAX_MODES 7
+
+#define SUNRISE_CLUSTER_AMOUNT 3
+int SUNRISE_COLOR_VARRIED_1[] = { 255, 80, 0 };
+int SUNRISE_COLOR_VARRIED_2[] = { 255, 131, 0 };
+int SUNRISE_COLOR_CLUSTER[] = { 255, 46, 0 };
+#define SUNRISE_CLUSTER_PCT 0.25
+#define SUNRISE_VARRIED_PCT 0.75
+
+#define SUNSET_COLOR1_PCT 0.10
+#define SUNSET_COLOR2_PCT 0.40
+#define SUNSET_COLOR3_PCT 0.40
+int SUNSET_COLOR1[] = { 118, 0, 255 };
+int SUNSET_COLOR2[] = { 187, 0, 255 };
+int SUNSET_COLOR3[] = { 255, 0, 221 };
 
 // State variables
 bool startedOk = false;
@@ -97,6 +111,8 @@ struct {
 // define prototypes
 void pingColorMode();
 void pingOffMode();
+double randomDouble();
+uint32_t colorFromArray(int rgb[]);
 
 void setup() {
   // debugging
@@ -198,8 +214,8 @@ void loop() {
   switch(currentMode) {
     case 0: pingColorMode(); break;
     //case 1: pingThunderMode(); break;
-    //case 2: pingSunriseMode(); break;
-    //case 3: pingSunsetMode(); break;
+    case 2: pingSunriseMode(); break;
+    case 3: pingSunsetMode(); break;
     //case 4: pingRainbowMode(); break;
     //case 5: pingDiscoMode(); break;
     case 6: pingOffMode(); break;
@@ -227,5 +243,61 @@ void pingOffMode(){
     }
     strip.show();
   }
+}
+
+void pingSunriseMode() {
+  if(justChangedMode){
+    int clusterRemaining = 0;
+    for(int i = 0; i < strip.numPixels(); i++){
+      if(clusterRemaining > 0){
+        strip.setPixelColor(i, colorFromArray(SUNRISE_COLOR_CLUSTER));
+        clusterRemaining--;
+        continue;
+      }
+
+      double r = randomDouble();
+      if(r <= SUNRISE_CLUSTER_PCT){
+        clusterRemaining = SUNRISE_CLUSTER_AMOUNT - 1;
+        strip.setPixelColor(i, colorFromArray(SUNRISE_COLOR_CLUSTER));
+      } else if (r <= SUNRISE_VARRIED_PCT) {
+        if(randomDouble() <= 0.5) {
+          strip.setPixelColor(i, colorFromArray(SUNRISE_COLOR_VARRIED_1));
+        } else {
+          strip.setPixelColor(i, colorFromArray(SUNRISE_COLOR_VARRIED_2));
+        }
+      } else {
+        strip.setPixelColor(i, strip.Color(0, 0, 0));
+      }
+    }
+    strip.show();
+  }
+}
+
+void pingSunsetMode() {
+  if(justChangedMode){
+    for(int i = 0; i < strip.numPixels(); i++){
+      double r = randomDouble();
+      if(r <= SUNSET_COLOR1_PCT){
+        strip.setPixelColor(i, colorFromArray(SUNSET_COLOR1));
+      }else if(r <= SUNSET_COLOR2_PCT){
+        strip.setPixelColor(i, colorFromArray(SUNSET_COLOR2));
+      }else if(r <= SUNSET_COLOR3_PCT){
+        strip.setPixelColor(i, colorFromArray(SUNSET_COLOR3));
+      } else {
+        strip.setPixelColor(i, strip.Color(0, 0, 0));
+      }
+    }
+    strip.show();
+  }
+}
+
+// UTILITY FUNCTIONS
+// =======================================================
+double randomDouble(){
+  return random(0, 1001) / 1000.0;
+}
+
+uint32_t colorFromArray(int rgb[]) {
+  return strip.Color(rgb[0], rgb[1], rgb[2]);
 }
 

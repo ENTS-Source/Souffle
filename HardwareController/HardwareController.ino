@@ -225,7 +225,21 @@ void loop() {
         writeLCD("Mode: RGB Color", "Turn to adjust");
       }
       break;
-    // TODO: Other modes
+    case 1:
+      if(justChangedMode){
+        writeLCD("Mode: Lightning", "NOT IMPLEMENTED");
+      }
+      break;
+    case 2:
+      if(justChangedMode){
+        writeLCD("Mode: Sunrise", "");
+      }
+      break;
+    case 3:
+      if(justChangedMode){
+        writeLCD("Mode: Sunset", "");
+      }
+      break;
     case 6: 
       if(justChangedMode){
         writeLCD("Mode: Off", "");
