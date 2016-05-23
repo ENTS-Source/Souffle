@@ -245,6 +245,11 @@ void loop() {
         writeLCD("Mode: Off", "");
       }
       break;
+    default:
+      if(justChangedMode) {
+        writeLCD("Unknown mode", "ID: " + String(currentMode));
+      }
+      break;
   }
 
   justUpdatedMode = false;
@@ -258,7 +263,7 @@ void checkColorMode(){
 
   updateColor();
 
-  if(r1 != red || g1 != green || b1 != blue || justUpdatedMode){
+  if(r1 != red || g1 != green || b1 != blue || justChangedMode){
     DEBUG_SERIAL.println("MODE: Color. R = " + String(red) + ", G = " + String(green) + ", B = " + String(blue));
     udp.beginPacketMulticast(MULTICAST_IP, MULTICAST_PORT, WiFi.localIP(), 1200);
     udp.write((byte)PROTOCOL_PARAMS_COLOR);

@@ -190,7 +190,7 @@ void loop() {
       }
     }else if(packetBuffer[0] == PROTOCOL_INCREMENT_MODE){
       currentMode++;
-      if(currentMode > MAX_MODES){
+      if(currentMode >= MAX_MODES){
         currentMode = 0;
       }
       justChangedMode = true;
